@@ -5,10 +5,7 @@ import { cloudflare } from '@flarelabs-net/vite-environment-provider-cloudflare'
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter(),
-		environments: {
-			ssr: cloudflare()
-		}
+		adapter: adapter()
 	},
 	preprocess: [vitePreprocess()]
 };
