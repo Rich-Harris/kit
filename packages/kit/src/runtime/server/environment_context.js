@@ -1,6 +1,3 @@
-// We're using `pathe` rather than `node:path` for compatibility with other runtimes.
-import * as pathe from 'pathe';
-
 /** @param {string} str */
 function posixify(str) {
 	return str.replace(/\\/g, '/');
@@ -42,11 +39,27 @@ async function loud_ssr_load_module(url) {
 	}
 }
 
+/**
+ * @param {string} cwd
+ * @param {string} id
+ */
+function resolve(cwd, id) {
+	const from = cwd.split(/[\/]/);
+	const to = id.split(/[\/]/);
+
+	while (to[0] === '..') {
+		from.pop();
+		to.shift();
+	}
+
+	return [...from, ...to].join('/');
+}
+
 /** @param {string} cwd */
 export function create_resolve(cwd) {
 	/** @param {string} id */
-	return async function resolve(id) {
-		const url = id.startsWith('..') ? to_fs(pathe.resolve(cwd, id)) : `/${id}`;
+	return async function (id) {
+		const url = id.startsWith('..') ? to_fs(resolve(cwd, id)) : `/${id}`;
 
 		const module = await loud_ssr_load_module(url);
 
