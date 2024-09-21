@@ -1,7 +1,6 @@
 import 'svelte'; // pick up `declare module "*.svelte"`
 import 'vite/client'; // pick up `declare module "*.jpg"`, etc.
 import '../types/ambient.js';
-import { Plugin } from 'vite';
 
 import { CompileOptions } from 'svelte/compiler';
 import {
