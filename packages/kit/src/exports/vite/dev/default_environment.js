@@ -16,11 +16,9 @@ export const asyncFunctionDeclarationPaddingLineCount = /** #__PURE__ */ (() => 
 class NodeDevEnvironment extends DevEnvironment {
 	/** @type {{ entrypoint: string }} */
 	#options;
-	#initialized = false;
-	/** @type {(request: Request) => Promise<Response>} */
-	#handler = () => {
-		throw new Error('Not initilialized');
-	};
+
+	/** @type {import('vite/module-runner').ModuleRunner} */
+	#runner;
 
 	/**
 	 * @param {string} name
@@ -39,23 +37,15 @@ class NodeDevEnvironment extends DevEnvironment {
 				}
 			}
 		});
+
 		this.#options = options;
-	}
-
-	async init() {
-		await super.init();
-
-		if (!this.#initialized) {
-			const moduleRunner = createServerModuleRunner(this);
-			const entrypoint = await moduleRunner.import(this.#options.entrypoint);
-			this.#handler = entrypoint.default.fetch;
-			this.#initialized = true;
-		}
+		this.#runner = createServerModuleRunner(this);
 	}
 
 	/** @param {Request} request */
 	async dispatchFetch(request) {
-		return this.#handler(request);
+		const entrypoint = await this.#runner.import(this.#options.entrypoint);
+		return entrypoint.default.fetch(request);
 	}
 }
 

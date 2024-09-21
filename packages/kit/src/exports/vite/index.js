@@ -17,7 +17,7 @@ import {
 } from '../../utils/filesystem.js';
 import { create_static_module, create_dynamic_module } from '../../core/env.js';
 import * as sync from '../../core/sync/sync.js';
-import { create_assets } from '../../core/sync/create_manifest_data/index.js';
+import create_manifest_data, { create_assets } from '../../core/sync/create_manifest_data/index.js';
 import { runtime_directory, logger, get_mime_lookup, runtime_base } from '../../core/utils.js';
 import { load_config } from '../../core/config/index.js';
 import { generate_manifest } from '../../core/generate_manifest/index.js';
@@ -527,7 +527,8 @@ async function kit({ svelte_config }) {
 				// - Server assets. The `read` function from `$app/server` can only be used in environments that support file system access.
 				// - Inlining styles. This requires communicating with the main process to collect dependencies. It should be possible (e.g. using import.meta.hot) but needs more investigation.
 				case sveltekit_environment_context: {
-					const { manifest_data, env, remote_address } = environment_context;
+					const manifest_data = create_manifest_data({ config: svelte_config });
+					const { env = {}, remote_address } = environment_context;
 					const supports_fs = true;
 
 					return dedent`
