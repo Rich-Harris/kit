@@ -22,6 +22,7 @@ export default {
 				throw new Error('Could not determine clientAddress');
 			},
 			// We can provide the platform properties directly as the code is executed in a workerd environment.
+			// TODO we should probably deprecate both `platform` and `emulate`
 			platform: {
 				env,
 				cf: request.cf,
