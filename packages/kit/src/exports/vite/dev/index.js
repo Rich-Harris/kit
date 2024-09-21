@@ -445,7 +445,6 @@ export async function dev(vite, vite_config, svelte_config, environment_context)
 	const env = loadEnv(vite_config.mode, svelte_config.kit.env.dir, '');
 	// Update the `env` used in the `sveltekit_environment_context` virtual module.
 	environment_context.env = env;
-	const emulator = await svelte_config.kit.adapter?.emulate?.();
 
 	const dev_env =
 		/** @type {import('vite').DevEnvironment & { dispatchFetch: (request: Request) => Promise<Response> }} */ (
@@ -515,26 +514,6 @@ export async function dev(vite, vite_config, svelte_config, environment_context)
 					return;
 				}
 
-				// we have to import `Server` before calling `set_assets`
-				const { Server } = /** @type {import('types').ServerModule} */ (
-					await vite.ssrLoadModule(`${runtime_base}/server/index.js`, { fixStacktrace: true })
-				);
-
-				const { set_fix_stack_trace } = await vite.ssrLoadModule(
-					`${runtime_base}/shared-server.js`
-				);
-				set_fix_stack_trace(fix_stack_trace);
-
-				const { set_assets } = await vite.ssrLoadModule('__sveltekit/paths');
-				set_assets(assets);
-
-				const server = new Server(manifest);
-
-				await server.init({
-					env,
-					read: (file) => createReadableStream(from_fs(file))
-				});
-
 				const request = await getRequest({
 					base,
 					request: req
@@ -562,20 +541,9 @@ export async function dev(vite, vite_config, svelte_config, environment_context)
 					return;
 				}
 
-				const rendered = is_fetchable_dev_environment(dev_env)
-					? await dev_env.dispatchFetch(request)
-					: await server.respond(request, {
-							getClientAddress: () => {
-								const { remoteAddress } = req.socket;
-								if (remoteAddress) return remoteAddress;
-								throw new Error('Could not determine clientAddress');
-							},
-							read: (file) => fs.readFileSync(path.join(svelte_config.kit.files.assets, file)),
-							before_handle: (event, config, prerender) => {
-								async_local_storage.enterWith({ event, config, prerender });
-							},
-							emulator
-						});
+				// TODO figure out which environment to use for SSR
+				// https://github.com/sveltejs/kit/issues/12580#issuecomment-2365308350
+				const rendered = await dev_env.dispatchFetch(request);
 
 				if (rendered.status === 404) {
 					// @ts-expect-error
