@@ -332,9 +332,19 @@ export async function dev(vite, vite_config, svelte_config) {
 					return;
 				}
 
-				// TODO figure out which environment to use for SSR
-				// https://github.com/sveltejs/kit/issues/12580#issuecomment-2365308350
-				const rendered = await dev_env.dispatchFetch(request);
+				// TODO routing is slightly more involved than this — need to account for `/_app/env.js`, `__data.json` etc.
+				// The logic in `respond.js` uses an `SSRManifest` rather than the `ManifestData`, but could still
+				// probably be unified somehow
+				const route = manifest_data.routes.find((route) =>
+					route.pattern.exec(/** @type {string} */ (req.url))
+				);
+
+				const environment =
+					/** @type {import('vite').DevEnvironment & { dispatchFetch: (request: Request) => Promise<Response> }} */ (
+						vite.environments[route?.environment ?? 'ssr']
+					);
+
+				const rendered = await environment.dispatchFetch(request);
 
 				if (rendered.status === 404) {
 					// @ts-expect-error
