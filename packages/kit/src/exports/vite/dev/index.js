@@ -54,27 +54,20 @@ export async function dev(vite, vite_config, svelte_config) {
 	/** @type {Error | null} */
 	let manifest_error = null;
 
-	/**
-	 * Used to invalidate the `sveltekit_environment_context` module when the manifest is updated.
-	 */
-	function invalidate_environment_context_module() {
-		for (const environment in vite.environments) {
-			const module = vite.environments[environment].moduleGraph.getModuleById(
-				sveltekit_environment_context
-			);
-
-			if (module) {
-				vite.environments[environment].moduleGraph.invalidateModule(module);
-			}
-		}
-	}
-
 	function update_manifest() {
 		try {
 			({ manifest_data } = sync.create(svelte_config));
 
 			// Invalidate the virtual module.
-			invalidate_environment_context_module();
+			for (const environment in vite.environments) {
+				const module = vite.environments[environment].moduleGraph.getModuleById(
+					sveltekit_environment_context
+				);
+
+				if (module) {
+					vite.environments[environment].moduleGraph.invalidateModule(module);
+				}
+			}
 
 			if (manifest_error) {
 				manifest_error = null;
