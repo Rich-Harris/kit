@@ -44,8 +44,8 @@ async function loud_ssr_load_module(url) {
  * @param {string} id
  */
 function resolve(cwd, id) {
-	const from = cwd.split(/[\/]/);
-	const to = id.split(/[\/]/);
+	const from = cwd.split(/[\\/]/);
+	const to = id.split(/[\\/]/);
 
 	while (to[0] === '..') {
 		from.pop();
