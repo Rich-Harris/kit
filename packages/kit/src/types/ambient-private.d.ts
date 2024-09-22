@@ -31,7 +31,5 @@ declare module '__sveltekit/environment_context' {
 	import { SSRManifest } from '@sveltejs/kit';
 
 	export let manifest: SSRManifest;
-	export let env: Record<string, string>;
-	export let remote_address: string | undefined;
-	export let assets: string;
+	export let assets: string; // TODO this probably doesn't belong here
 }
