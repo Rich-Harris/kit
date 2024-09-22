@@ -26,14 +26,12 @@ interface RouteSharedModule {
 	kind: 'universal';
 	is_page: boolean;
 	is_layout: boolean;
-	environment: string | null;
 }
 
 interface RouteServerModule {
 	kind: 'server';
 	is_page: boolean;
 	is_layout: boolean;
-	environment: string | null;
 }
 
 export type RouteFile = RouteComponent | RouteSharedModule | RouteServerModule;
