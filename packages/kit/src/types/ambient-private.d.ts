@@ -26,3 +26,10 @@ declare module '__sveltekit/server' {
 	export function set_manifest(manifest: SSRManifest): void;
 	export function set_read_implementation(fn: (path: string) => ReadableStream): void;
 }
+
+declare module '__sveltekit/environment_context' {
+	import { SSRManifest } from '@sveltejs/kit';
+
+	export let manifest: SSRManifest;
+	export let assets: string; // TODO this probably doesn't belong here
+}

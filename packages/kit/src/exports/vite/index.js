@@ -1,14 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
 import colors from 'kleur';
 
-import { copy, mkdirp, posixify, read, resolve_entry, rimraf } from '../../utils/filesystem.js';
+import { compact } from '../../utils/array.js';
+import {
+	copy,
+	mkdirp,
+	posixify,
+	read,
+	resolve_entry,
+	rimraf,
+	to_fs
+} from '../../utils/filesystem.js';
 import { create_static_module, create_dynamic_module } from '../../core/env.js';
 import * as sync from '../../core/sync/sync.js';
-import { create_assets } from '../../core/sync/create_manifest_data/index.js';
-import { runtime_directory, logger } from '../../core/utils.js';
+import create_manifest_data, { create_assets } from '../../core/sync/create_manifest_data/index.js';
+import { runtime_directory, logger, get_mime_lookup, runtime_base } from '../../core/utils.js';
 import { load_config } from '../../core/config/index.js';
 import { generate_manifest } from '../../core/generate_manifest/index.js';
 import { build_server_nodes } from './build/build_server.js';
@@ -32,9 +42,12 @@ import {
 	service_worker,
 	sveltekit_environment,
 	sveltekit_paths,
-	sveltekit_server
+	sveltekit_server,
+	sveltekit_environment_context
 } from './module_ids.js';
 import { resolve_peer_dependency } from '../../utils/import.js';
+import { createNodeEnvironment } from './dev/default_environment.js';
+import { SVELTE_KIT_ASSETS } from '../../constants.js';
 
 const cwd = process.cwd();
 
@@ -216,6 +229,21 @@ async function kit({ svelte_config }) {
 
 	const sourcemapIgnoreList = /** @param {string} relative_path */ (relative_path) =>
 		relative_path.includes('node_modules') || relative_path.includes(kit.outDir);
+
+	/** @type {import('vite').Plugin} */
+	const plugin_default_environment = {
+		name: 'vite-plugin-node-environment',
+
+		config() {
+			const entrypoint = fileURLToPath(new URL('./dev/node_entrypoint.js', import.meta.url));
+
+			return {
+				environments: {
+					ssr: createNodeEnvironment({ entrypoint })
+				}
+			};
+		}
+	};
 
 	/** @type {import('vite').Plugin} */
 	const plugin_setup = {
@@ -500,6 +528,148 @@ async function kit({ svelte_config }) {
 						export function set_manifest(_) {
 							manifest = _;
 						}
+					`;
+				}
+
+				// The virtual module that is imported in the environment entrypoint files. This provides all the data that is needed to create the `Server` instance.
+				// Not implemented:
+				// - Server assets. The `read` function from `$app/server` can only be used in environments that support file system access.
+				// - Inlining styles. This requires communicating with the main process to collect dependencies. It should be possible (e.g. using import.meta.hot) but needs more investigation.
+				case sveltekit_environment_context: {
+					const manifest_data = create_manifest_data({ config: svelte_config });
+					const supports_fs = true;
+
+					return dedent`
+						import { from_fs, create_resolve } from "${runtime_base}/server/environment_context.js";
+						const fs = ${supports_fs ? 'await import("node:fs")' : 'undefined'};
+
+						const resolve = create_resolve(${s(cwd)});
+
+						export let manifest = {
+							appDir: ${s(svelte_config.kit.appDir)},
+							appPath: ${s(svelte_config.kit.appDir)},
+							assets: new Set(${s(manifest_data.assets.map((asset) => asset.file))}),
+							mimeTypes: ${s(get_mime_lookup(manifest_data))},
+							_: {
+								client: {
+									start: "${runtime_base}/client/entry.js",
+									app: "${to_fs(svelte_config.kit.outDir)}/generated/client/app.js",
+									imports: [],
+									stylesheets: [],
+									fonts: [],
+									uses_env_dynamic_public: true
+								},
+								server_assets: ${
+									supports_fs
+										? dedent`
+												new Proxy(
+													{},
+													{
+														has: (_, file) => fs.existsSync(from_fs(file)),
+														get: (_, file) => fs.statSync(from_fs(file)).size
+													}
+												)
+									`
+										: '{}'
+								},
+								nodes: [
+									${manifest_data.nodes
+										.map((node, i) => {
+											const index = s(i);
+											const component = s(node.component);
+											const universal = s(node.universal);
+											const server = s(node.server);
+
+											return dedent`
+												async () => {
+													const result = {};
+
+													const module_nodes = [];
+
+													result.index = ${index};
+
+													// these are unused in dev, it's easier to include them
+													result.imports = [];
+													result.stylesheets = [];
+													result.fonts = [];
+
+													if (${component}) {
+														result.component = async () => {
+															const { module } = await resolve(${component});
+
+															return module.default;
+														}
+													}
+
+													if (${universal}) {
+														const { module } = await resolve(${universal});
+
+														result.universal = module;
+														result.universal_id = ${universal};
+													}
+
+													if (${server}) {
+														const { module } = await resolve(${server});
+
+														result.server = module;
+														result.server_id = ${server};
+													}
+
+													return result;
+												}
+										`;
+										})
+										.join(',\n')}
+								],
+								routes: [
+									${compact(
+										manifest_data.routes.map((route) => {
+											if (!route.page && !route.endpoint) return;
+
+											const endpoint = route.endpoint;
+
+											return dedent`
+												{
+													id: ${s(route.id)},
+													pattern: ${route.pattern},
+													params: ${s(route.params)},
+													page: ${s(route.page)},
+													endpoint: ${
+														endpoint
+															? `
+																async () => {
+																	const { module } = await resolve(${s(endpoint.file)});
+
+																	return module;
+																}
+															`
+															: 'null'
+													},
+													endpoint_id: ${s(endpoint?.file)}
+												}
+										`;
+										})
+									).join(',\n')}
+								],
+								matchers: async () => {
+									const matchers = {};
+
+									for (const [key, file] of ${s(Object.entries(manifest_data.matchers))}) {
+										const { module } = await resolve(file);
+
+										if (module.match) {
+											matchers[key] = module.match;
+										} else {
+											throw new Error(\`\${file} does not export a 'match' function\`);
+										}
+									}
+
+									return matchers;
+								}
+							}
+						};
+
+						export let assets = ${s(svelte_config.kit.paths.assets ? SVELTE_KIT_ASSETS : svelte_config.kit.paths.base)};
 					`;
 				}
 			}
@@ -923,7 +1093,13 @@ async function kit({ svelte_config }) {
 		}
 	};
 
-	return [plugin_setup, plugin_virtual_modules, plugin_guard, plugin_compile];
+	return [
+		plugin_default_environment,
+		plugin_setup,
+		plugin_virtual_modules,
+		plugin_guard,
+		plugin_compile
+	];
 }
 
 /**
