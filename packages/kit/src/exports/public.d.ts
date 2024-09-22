@@ -48,6 +48,7 @@ export interface Adapter {
 	/**
 	 * Creates an `Emulator`, which allows the adapter to influence the environment
 	 * during dev, build and prerendering
+	 * @deprecated
 	 */
 	emulate?(): MaybePromise<Emulator>;
 }
