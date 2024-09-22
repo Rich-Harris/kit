@@ -1,3 +1,5 @@
+'use ssr';
+
 import { read } from '$app/server';
 import favicon from '../../static/favicon.png';
 

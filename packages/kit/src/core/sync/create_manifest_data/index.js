@@ -318,7 +318,10 @@ function create_routes_and_nodes(cwd, config, fallback) {
 						);
 					}
 
+					// TODO throw error if `+layout.server.js` and `+layout.js` declare conflicting environments
+
 					route.layout[item.kind] = project_relative;
+					route.layout.environment = item.environment;
 				} else if (item.is_page) {
 					if (!route.leaf) {
 						route.leaf = { depth };
@@ -329,14 +332,18 @@ function create_routes_and_nodes(cwd, config, fallback) {
 						);
 					}
 
+					// TODO throw error if `+page.server.js` and `+page.js` declare conflicting environments
+
 					route.leaf[item.kind] = project_relative;
+					route.leaf.environment = item.environment;
 				} else {
 					if (route.endpoint) {
 						throw duplicate_files_error('endpoint', route.endpoint.file);
 					}
 
 					route.endpoint = {
-						file: project_relative
+						file: project_relative,
+						environment: item.environment
 					};
 				}
 			}
@@ -502,10 +509,19 @@ function analyze(project_relative, file, component_extensions, module_extensions
 
 		const kind = match[1] || match[4] || match[7] ? 'server' : 'universal';
 
+		const content = fs.readFileSync(project_relative, 'utf-8');
+
+		const comments_removed = content.replace(/(\/\/.+|\/\*[\s\S]+?\*\/)/gm, (m) =>
+			' '.repeat(m.length)
+		);
+
+		const pragma_match = /^\s*(['"])use (.+?)\1/.exec(comments_removed);
+
 		return {
 			kind,
 			is_page: !!match[2],
-			is_layout: !!match[5]
+			is_layout: !!match[5],
+			environment: pragma_match ? pragma_match[2] : null
 		};
 	}
 

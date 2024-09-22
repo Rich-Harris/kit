@@ -136,7 +136,11 @@ export async function dev(vite, vite_config, svelte_config) {
 		// Don't run for a single file if the whole manifest is about to get updated
 		if (timeout || restarting) return;
 
-		sync.update(svelte_config, manifest_data, file);
+		// sync.update(svelte_config, manifest_data, file);
+
+		// We now need to update the manifest on file changes, because we need
+		// to read `"use my-environment"` pragmas. TODO make this more efficient
+		update_manifest();
 	});
 
 	const { appTemplate, errorTemplate, serviceWorker, hooks } = svelte_config.kit.files;
@@ -332,17 +336,43 @@ export async function dev(vite, vite_config, svelte_config) {
 					return;
 				}
 
-				// TODO routing is slightly more involved than this — need to account for `/_app/env.js`, `__data.json` etc.
-				// The logic in `respond.js` uses an `SSRManifest` rather than the `ManifestData`, but could still
-				// probably be unified somehow
+				// TODO routing is slightly more involved than this — need to account for `/_app/env.js`, `__data.json` etc,
+				// and probably need to deal with pages vs endpoints. The logic in `respond.js` uses an `SSRManifest`
+				// rather than the `ManifestData`, but could still probably be unified somehow
 				const route = manifest_data.routes.find((route) =>
 					route.pattern.exec(/** @type {string} */ (req.url))
 				);
 
+				/** @type {string | null | undefined} */
+				let environment_name = null;
+
+				if (route) {
+					if (route.endpoint) {
+						environment_name = route.endpoint.environment;
+					} else if (route.leaf) {
+						environment_name = route.leaf.environment;
+
+						/** @type {import('types').RouteData | null} */
+						let current = route;
+
+						while (current && !environment_name) {
+							environment_name = current.layout?.environment;
+							current = current.parent;
+						}
+					}
+				}
+
 				const environment =
 					/** @type {import('vite').DevEnvironment & { dispatchFetch: (request: Request) => Promise<Response> }} */ (
-						vite.environments[route?.environment ?? 'ssr']
+						vite.environments[environment_name ?? 'ssr']
 					);
+
+				if (!environment) {
+					// TODO nicer error
+					throw new Error(`no '${environment_name}' environment configured`);
+				}
+
+				// TODO `"use browser"` is a special case — no SSR, just an empty shell
 
 				const rendered = await environment.dispatchFetch(request);
 
