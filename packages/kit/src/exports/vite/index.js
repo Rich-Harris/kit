@@ -524,7 +524,6 @@ async function kit({ svelte_config }) {
 				// - Inlining styles. This requires communicating with the main process to collect dependencies. It should be possible (e.g. using import.meta.hot) but needs more investigation.
 				case sveltekit_environment_context: {
 					const manifest_data = create_manifest_data({ config: svelte_config });
-					const { env = {}, remote_address } = environment_context;
 					const supports_fs = true;
 
 					return dedent`
@@ -656,10 +655,6 @@ async function kit({ svelte_config }) {
 								}
 							}
 						};
-
-						export let env = ${s(env)};
-
-						export let remote_address = ${s(remote_address)};
 
 						export let assets = ${s(svelte_config.kit.paths.assets ? SVELTE_KIT_ASSETS : svelte_config.kit.paths.base)};
 					`;
@@ -832,8 +827,7 @@ async function kit({ svelte_config }) {
 		 * @see https://vitejs.dev/guide/api-plugin.html#configureserver
 		 */
 		async configureServer(vite) {
-			// We pass the `environment_context` object in so that we can update the values inside the `dev` function. Not ideal but avoids restructuring the code for the time being.
-			return await dev(vite, vite_config, svelte_config, environment_context);
+			return await dev(vite, vite_config, svelte_config);
 		},
 
 		/**

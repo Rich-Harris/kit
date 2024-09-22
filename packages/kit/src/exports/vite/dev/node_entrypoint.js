@@ -2,7 +2,7 @@ import { Server } from '../../../runtime/server/index.js';
 import { createReadableStream } from '@sveltejs/kit/node';
 import { from_fs } from '../../../utils/filesystem.js';
 import { set_assets } from '__sveltekit/paths';
-import { assets, env, manifest } from '__sveltekit/environment_context';
+import { assets, manifest } from '__sveltekit/environment_context';
 
 // TODO feels like a lot of this is just boilerplate — adapters probably
 // shouldn't have to worry about `set_assets` and whatnot, just `read`,
@@ -13,7 +13,7 @@ set_assets(assets);
 const server = new Server(manifest);
 
 await server.init({
-	env,
+	env: {}, // TODO
 	read: (file) => createReadableStream(from_fs(file))
 });
 
