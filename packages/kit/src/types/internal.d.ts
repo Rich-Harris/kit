@@ -159,12 +159,6 @@ export interface PageNode {
 	parent?: PageNode;
 	/** Filled with the pages that reference this layout (if this is a layout) */
 	child_pages?: PageNode[];
-	/**
-	 * The environment to use for SSR (or none, if 'browser').
-	 * Read from "use my-environment" pragmas in route files.
-	 * Environments are defined by adapters
-	 */
-	environment?: string | null;
 }
 
 export interface PrerenderDependency {
@@ -221,13 +215,6 @@ export interface RouteData {
 
 	endpoint: {
 		file: string;
-
-		/**
-		 * The environment to use for SSR (or none, if 'browser').
-		 * Read from "use my-environment" pragmas in route files.
-		 * Environments are defined by adapters
-		 */
-		environment: string | null;
 	} | null;
 }
 

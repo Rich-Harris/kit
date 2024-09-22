@@ -136,11 +136,7 @@ export async function dev(vite, vite_config, svelte_config) {
 		// Don't run for a single file if the whole manifest is about to get updated
 		if (timeout || restarting) return;
 
-		// sync.update(svelte_config, manifest_data, file);
-
-		// We now need to update the manifest on file changes, because we need
-		// to read `"use my-environment"` pragmas. TODO make this more efficient
-		update_manifest();
+		sync.update(svelte_config, manifest_data, file);
 	});
 
 	const { appTemplate, errorTemplate, serviceWorker, hooks } = svelte_config.kit.files;
@@ -343,24 +339,7 @@ export async function dev(vite, vite_config, svelte_config) {
 					route.pattern.exec(/** @type {string} */ (req.url))
 				);
 
-				/** @type {string | null | undefined} */
-				let environment_name = null;
-
-				if (route) {
-					if (route.endpoint) {
-						environment_name = route.endpoint.environment;
-					} else if (route.leaf) {
-						environment_name = route.leaf.environment;
-
-						/** @type {import('types').RouteData | null} */
-						let current = route;
-
-						while (current && !environment_name) {
-							environment_name = current.layout?.environment;
-							current = current.parent;
-						}
-					}
-				}
+				const environment_name = get_environment(route);
 
 				const environment =
 					/** @type {import('vite').DevEnvironment & { dispatchFetch: (request: Request) => Promise<Response> }} */ (
@@ -425,4 +404,54 @@ function has_correct_case(file, assets) {
 	}
 
 	return false;
+}
+
+/**
+ * @param {import('types').RouteData | undefined} route
+ */
+function get_environment(route) {
+	if (!route) return;
+
+	if (route.endpoint) {
+		return get_pragma(route.endpoint.file);
+	}
+
+	if (route.leaf) {
+		const universal_pragma = route.leaf.universal && get_pragma(route.leaf.universal);
+		const server_pragma = route.leaf.server && get_pragma(route.leaf.server);
+
+		// TODO error if both exist, and they conflict
+		let name = universal_pragma ?? server_pragma;
+
+		/** @type {import('types').RouteData | null} */
+		let current = route;
+
+		while (current && !name) {
+			if (route.layout) {
+				const universal_pragma = route.layout.universal && get_pragma(route.layout.universal);
+				const server_pragma = route.layout.server && get_pragma(route.layout.server);
+
+				// TODO error if both exist, and they conflict
+				name = universal_pragma ?? server_pragma;
+			}
+
+			current = current.parent;
+		}
+
+		return name;
+	}
+}
+
+/**
+ *
+ * @param {string} file
+ */
+function get_pragma(file) {
+	// https://github.com/sveltejs/kit/issues/12580#issuecomment-2365308350
+	const content = fs
+		.readFileSync(file, 'utf-8')
+		// strip comments
+		.replace(/(\/\/.+|\/\*[\s\S]+?\*\/)/gm, (m) => ' '.repeat(m.length));
+
+	return /^\s*(['"])use (.+?)\1/.exec(content)?.[2];
 }
