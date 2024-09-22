@@ -46,10 +46,8 @@ import {
 	sveltekit_environment_context
 } from './module_ids.js';
 import { resolve_peer_dependency } from '../../utils/import.js';
-import { node_environment_plugin } from './dev/default_environment.js';
+import { createNodeEnvironment } from './dev/default_environment.js';
 import { SVELTE_KIT_ASSETS } from '../../constants.js';
-
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 const cwd = process.cwd();
 
@@ -231,6 +229,21 @@ async function kit({ svelte_config }) {
 
 	const sourcemapIgnoreList = /** @param {string} relative_path */ (relative_path) =>
 		relative_path.includes('node_modules') || relative_path.includes(kit.outDir);
+
+	/** @type {import('vite').Plugin} */
+	const plugin_default_environment = {
+		name: 'vite-plugin-node-environment',
+
+		config() {
+			const entrypoint = fileURLToPath(new URL('./dev/node_entrypoint.js', import.meta.url));
+
+			return {
+				environments: {
+					ssr: createNodeEnvironment({ entrypoint })
+				}
+			};
+		}
+	};
 
 	/** @type {import('vite').Plugin} */
 	const plugin_setup = {
@@ -1081,7 +1094,7 @@ async function kit({ svelte_config }) {
 	};
 
 	return [
-		node_environment_plugin({ entrypoint: path.join(__dirname, './dev/node_entrypoint.js') }),
+		plugin_default_environment,
 		plugin_setup,
 		plugin_virtual_modules,
 		plugin_guard,

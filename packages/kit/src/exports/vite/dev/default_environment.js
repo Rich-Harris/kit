@@ -67,25 +67,3 @@ export function createNodeEnvironment(options) {
 		}
 	};
 }
-
-/**
- * @param {{ entrypoint: string }} options
- * @returns {import('vite').Plugin}
- */
-export function node_environment_plugin(options) {
-	return {
-		name: 'vite-plugin-node-environment',
-		config() {
-			return {
-				environments: {
-					ssr: createNodeEnvironment(options)
-				}
-			};
-		}
-	};
-}
-
-/** @param {any} environment */
-export function is_fetchable_dev_environment(environment) {
-	return typeof environment?.dispatchFetch === 'function';
-}
