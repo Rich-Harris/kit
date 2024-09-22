@@ -47,6 +47,7 @@ declare namespace App {
 
 	/**
 	 * If your adapter provides [platform-specific context](https://kit.svelte.dev/docs/adapters#platform-specific-context) via `event.platform`, you can specify it here.
+	 * @deprecated
 	 */
 	export interface Platform {}
 }

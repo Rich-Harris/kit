@@ -30,6 +30,7 @@ declare module '@sveltejs/kit' {
 		/**
 		 * Creates an `Emulator`, which allows the adapter to influence the environment
 		 * during dev, build and prerendering
+		 * @deprecated
 		 */
 		emulate?(): MaybePromise<Emulator>;
 	}
@@ -250,6 +251,7 @@ declare module '@sveltejs/kit' {
 
 	/**
 	 * A collection of functions that influence the environment during dev, build and prerendering
+	 * @deprecated
 	 */
 	export interface Emulator {
 		/**
@@ -1566,6 +1568,7 @@ declare module '@sveltejs/kit' {
 
 	interface RequestOptions {
 		getClientAddress(): string;
+		/** @deprecated */
 		platform?: App.Platform;
 	}
 
@@ -2282,6 +2285,7 @@ declare namespace App {
 
 	/**
 	 * If your adapter provides [platform-specific context](https://kit.svelte.dev/docs/adapters#platform-specific-context) via `event.platform`, you can specify it here.
+	 * @deprecated
 	 */
 	export interface Platform {}
 }

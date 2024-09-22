@@ -222,6 +222,7 @@ export type PrerenderMap = Map<string, PrerenderOption>;
 
 export interface RequestOptions {
 	getClientAddress(): string;
+	/** @deprecated */
 	platform?: App.Platform;
 }
 

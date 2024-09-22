@@ -269,6 +269,7 @@ export interface Cookies {
 
 /**
  * A collection of functions that influence the environment during dev, build and prerendering
+ * @deprecated
  */
 export interface Emulator {
 	/**
