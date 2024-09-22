@@ -49,10 +49,6 @@ import { resolve_peer_dependency } from '../../utils/import.js';
 import { node_environment_plugin } from './dev/default_environment.js';
 import { SVELTE_KIT_ASSETS } from '../../constants.js';
 
-/**
- * This is where we store the values that are needed in the `sveltekit_environment_context` virtual module.
- */
-const environment_context = /** @type {import('types').EnvironmentContext} */ ({});
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 const cwd = process.cwd();

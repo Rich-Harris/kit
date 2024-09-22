@@ -4,7 +4,6 @@ import { URL } from 'node:url';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import colors from 'kleur';
 import sirv from 'sirv';
-import { loadEnv } from 'vite';
 import { getRequest, setResponse } from '../../../exports/node/index.js';
 import { installPolyfills } from '../../../exports/node/polyfills.js';
 import { coalesce_to_error } from '../../../utils/error.js';
@@ -22,10 +21,9 @@ import { sveltekit_environment_context } from '../module_ids.js';
  * @param {import('vite').ViteDevServer} vite
  * @param {import('vite').ResolvedConfig} vite_config
  * @param {import('types').ValidatedConfig} svelte_config
- * @param {import('types').EnvironmentContext} environment_context
  * @return {Promise<Promise<() => void>>}
  */
-export async function dev(vite, vite_config, svelte_config, environment_context) {
+export async function dev(vite, vite_config, svelte_config) {
 	installPolyfills();
 
 	const async_local_storage = new AsyncLocalStorage();
@@ -75,8 +73,6 @@ export async function dev(vite, vite_config, svelte_config, environment_context)
 		try {
 			({ manifest_data } = sync.create(svelte_config));
 
-			// Update the `manifest_data` used in the `sveltekit_environment_context` virtual module.
-			environment_context.manifest_data = manifest_data;
 			// Invalidate the virtual module.
 			invalidate_environment_context_module();
 
@@ -251,10 +247,6 @@ export async function dev(vite, vite_config, svelte_config, environment_context)
 		}
 	});
 
-	const env = loadEnv(vite_config.mode, svelte_config.kit.env.dir, '');
-	// Update the `env` used in the `sveltekit_environment_context` virtual module.
-	environment_context.env = env;
-
 	const dev_env =
 		/** @type {import('vite').DevEnvironment & { dispatchFetch: (request: Request) => Promise<Response> }} */ (
 			vite.environments.ssr
@@ -278,9 +270,6 @@ export async function dev(vite, vite_config, svelte_config, environment_context)
 		remove_static_middlewares(vite.middlewares);
 
 		vite.middlewares.use(async (req, res) => {
-			// Update the `remote_address` used in the `sveltekit_environment_context` virtual module.
-			environment_context.remote_address = req.socket.remoteAddress;
-
 			// Vite's base middleware strips out the base path. Restore it
 			const original_url = req.url;
 			req.url = req.originalUrl;
